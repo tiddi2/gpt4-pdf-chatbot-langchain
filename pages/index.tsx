@@ -92,7 +92,6 @@ export default function Home() {
             {
               type: 'apiMessage',
               message: data.text,
-              sourceDocs: data.sourceDocuments,
             },
           ],
           history: [...state.history, [question, data.text]],

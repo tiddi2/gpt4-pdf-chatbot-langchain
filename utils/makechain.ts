@@ -1,24 +1,18 @@
 import { ChatOpenAI } from 'langchain/chat_models/openai';
-import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { ConversationalRetrievalQAChain } from 'langchain/chains';
+import { LLMChain } from 'langchain/chains';
+import { PromptTemplate } from 'langchain/prompts';
 
-const CONDENSE_PROMPT = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
-
-Chat History:
-{chat_history}
-Follow Up Input: {question}
-Standalone question:`;
-
-const QA_PROMPT = `You are a helpful AI assistant. Use the following pieces of context to answer the question at the end.
-If you don't know the answer, just say you don't know. DO NOT try to make up an answer.
-If the question is not related to the context, politely respond that you are tuned to only answer questions that are related to the context.
+const QA_PROMPT = `Beskriv hva GPT skal gjøre her.
 
 {context}
 
 Question: {question}
-Helpful answer in markdown:`;
+Svar:`;
 
-export const makeChain = (vectorstore: PineconeStore) => {
+export const makeChain = async (
+  question: string,
+  history: [string, string][],
+) => {
   const model = new ChatOpenAI({
     temperature: 0,
     azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY,
@@ -27,14 +21,15 @@ export const makeChain = (vectorstore: PineconeStore) => {
     azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
   });
 
-  const chain = ConversationalRetrievalQAChain.fromLLM(
-    model,
-    vectorstore.asRetriever(),
-    {
-      qaTemplate: QA_PROMPT,
-      questionGeneratorTemplate: CONDENSE_PROMPT,
-      returnSourceDocuments: true, //The number of source documents returned is 4 by default
-    },
-  );
-  return chain;
+  const prompt = PromptTemplate.fromTemplate(QA_PROMPT);
+
+  const chain = new LLMChain({ llm: model, prompt: prompt });
+
+  const res = await chain.call({
+    context: history,
+    question: question,
+    word: 'Ord',
+  });
+  console.log(res);
+  return res;
 };
